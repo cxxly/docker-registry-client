@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	APIVersion = "v2.0"
+	APIVERSION = "v2"
 )
 
 var (
@@ -32,13 +33,6 @@ type Client struct {
 	// TLSConfig specifies the TLS configuration to use with
 	// tls.Client. If nil, the default configuration is used.
 	TLSConfig *tls.Config
-}
-
-//Error represtnts the error info of response.
-type Error struct {
-	StatusCode int
-	Status     string
-	msg        string
 }
 
 //NewClient return a client.
@@ -129,26 +123,34 @@ func (client *Client) doStreamRequest(method string, path string, in io.Reader, 
 	}
 	if resp.StatusCode >= 400 {
 		defer resp.Body.Close()
-		data, err := ioutil.ReadAll(resp.Body)
-		fmt.Println(data)
-		if err != nil {
-			return nil, err
-		}
 		return nil, err
 	}
-
 	return resp.Body, nil
 }
 
-//func (client *Client) Catelog() (*Repositories, error) {
-//	data, err := client.doRequest("GET", "/v2/_catalog", nil, nil)
-//	if err != nil {
-//		return nil, err
-//	}
-//	ret := &Repositories{}
-//	if err = json.Unmarshal(data, &ret); err != nil {
-//		return nil, err
-//	}
-//	fmt.Println(ret)
-//	return ret, nil
-//}
+func (client *Client) Catelog() (*Repositories, error) {
+	uri := fmt.Sprintf("/%s/_catalog", APIVERSION)
+	data, err := client.doRequest("GET", uri, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var repositories Repositories
+	if err = json.Unmarshal(data, &repositories); err != nil {
+		return nil, err
+	}
+	return &repositories, nil
+}
+
+func (client *Client) Tags(name string) (*Tags, error) {
+	uri := fmt.Sprintf("/%s/%s/tags/list", APIVERSION, name)
+	data, err := client.doRequest("GET", uri, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var tags Tags
+	err = json.Unmarshal(data, &tags)
+	if err != nil {
+		return nil, err
+	}
+	return &tags, nil
+}
